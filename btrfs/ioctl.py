@@ -1447,3 +1447,93 @@ def get_features(fd):
     fcntl.ioctl(fd, IOC_GET_FEATURES, buf)
     compat_flags, compat_ro_flags, incompat_flags = ioctl_feature_flags.unpack(buf)
     return FeatureFlags(compat_flags, compat_ro_flags, incompat_flags)
+
+
+# This one should actually be without leading underscore, but we also have a
+# function named scrub_progress...
+_scrub_progress = struct.Struct('=15Q')
+
+
+class ScrubProgress():
+    """Object representation of struct `btrfs_scrub_progress`.
+
+    :ivar int data_extents_scrubbed: Amount of data extents scrubbed.
+    :ivar int tree_extents_scrubbed: Amount of metadata extents scrubbed.
+    :ivar int data_bytes_scrubbed: Amount of data scrubbed, in bytes.
+    :ivar int tree_bytes_scrubbed: Amount of metadata scrubbed, in bytes.
+    :ivar int read_errors: Amount of read errors (-EIO) encountered.
+    :ivar int csum_errors: Amount of failed checksum verification encountered.
+    :ivar int verify_errors: Amount of occurences where invalid field values
+        inside a metadata tree block was found.
+    :ivar int no_csum: XXX WIP
+    :ivar int csum_discards:
+    :ivar int super_errors:
+    :ivar int malloc_errors:
+    :ivar int uncorrectable_errors:
+    :ivar int corrected_errors:
+    :ivar int last_physical:
+    :ivar int unverified_errors:
+    """
+    def __init__(self, data_extents_scrubbed, tree_extents_scrubbed, data_bytes_scrubbed,
+                 tree_bytes_scrubbed, read_errors, csum_errors, verify_errors, no_csum,
+                 csum_discards, super_errors, malloc_errors, uncorrectable_errors,
+                 corrected_errors, last_physical, unverified_errors):
+        self.data_extents_scrubbed = data_extents_scrubbed
+        self.tree_extents_scrubbed = tree_extents_scrubbed
+        self.data_bytes_scrubbed = data_bytes_scrubbed
+        self.tree_bytes_scrubbed = tree_bytes_scrubbed
+        self.read_errors = read_errors
+        self.csum_errors = csum_errors
+        self.verify_errors = verify_errors
+        self.no_csum = no_csum
+        self.csum_discards = csum_discards
+        self.super_errors = super_errors
+        self.malloc_errors = malloc_errors
+        self.uncorrectable_errors = uncorrectable_errors
+        self.corrected_errors = corrected_errors
+        self.last_physical = last_physical
+        self.unverified_errors = unverified_errors
+
+    def __repr__(self):
+        return "ScrubProgress(data_extents_scrubbed={self.data_extents_scrubbed}, " \
+            "tree_extents_scrubbed={self.tree_extents_scrubbed}, " \
+            "data_bytes_scrubbed={self.data_bytes_scrubbed}, " \
+            "tree_bytes_scrubbed={self.tree_bytes_scrubbed}, " \
+            "read_errors={self.read_errors}, csum_errors={self.csum_errors}, " \
+            "verify_errors={self.verify_errors}, no_csum={self.no_csum}, " \
+            "csum_discards={self.csum_discards}, super_errors={self.super_errors}, " \
+            "malloc_errors={self.malloc_errors}, " \
+            "uncorrectable_errors={self.uncorrectable_errors}, " \
+            "corrected_errors={self.corrected_errors}, last_physical={self.last_physical}, " \
+            "unverified_errors={self.unverified_errors}".format(self=self)
+
+    def __str__(self):
+        return "WIP"
+
+
+_ioctl_scrub_args = [
+    struct.Struct('=Q'),  # 0 - devid - in
+    struct.Struct('=Q'),  # 1 - start - in
+    struct.Struct('=Q'),  # 2 - end - in
+    struct.Struct('=Q'),  # 3 - flags - in
+    _scrub_progress,      # 4 - progress - out
+    struct.Struct('872x')
+]
+ioctl_scrub_args = struct.Struct('=' + ''.join([btrfs.ctree._struct_format(s)[1:]
+                                                for s in _ioctl_scrub_args]))
+IOC_SCRUB_PROGRESS = _IOWR(BTRFS_IOCTL_MAGIC, 29, ioctl_balance_args)
+
+
+WIP_DEVID = 1
+
+
+def scrub_progress(fd, devid):
+    """WIP"""
+    args = bytearray(ioctl_scrub_args.size)
+    _ioctl_scrub_args[0].pack_into(args, 0, WIP_DEVID)
+    try:
+        fcntl.ioctl(fd, IOC_SCRUB_PROGRESS, args)
+    except OSError as oserror:
+        raise  # WIP
+    pos = struct.Struct('=Q').size * 4
+    return ScrubProgress(*_scrub_progress.unpack_from(args, pos))
